@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <!-- Added viewport meta for mobile scaling -->
+    <title>Harsh Bajwa - Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Using raw.githack.com for example files -->
+    <script src="https://raw.githack.com/mrdoob/three.js/r128/examples/js/loaders/FontLoader.js"></script>
+    <script src="https://raw.githack.com/mrdoob/three.js/r128/examples/js/geometries/TextGeometry.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Inter', sans-serif; color: #eee; }
+        #threejs-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        #overlayCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+        .content-container { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; position: relative; z-index: 1; padding-bottom: 8rem; box-sizing: border-box; }
+        #icon-container { position: absolute; bottom: 4rem; left: 50%; transform: translateX(-50%); display: flex; gap: 1.8rem; z-index: 2; }
+        .icon-link { color: #ccc; font-size: 1.8rem; transition: color 0.3s ease, transform 0.3s ease; text-decoration: none; }
+        .icon-link:hover { color: #fff; transform: scale(1.1); }
+        #message-box { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(30, 30, 30, 0.9); color: #eee; padding: 10px 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); z-index: 1000; display: none; font-size: 0.9rem; border: 1px solid #444; }
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltiptext { visibility: hidden; width: 100px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 0; position: absolute; z-index: 1; bottom: 135%; left: 50%; margin-left: -50px; opacity: 0; transition: opacity 0.3s; font-size: 0.8rem; }
+        .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #555 transparent transparent transparent; }
+        .tooltip.active .tooltiptext { visibility: visible; opacity: 1; }
+        #emailButton { background: none; border: none; padding: 0; cursor: pointer; }
+    </style>
+</head>
+<body class="bg-black">
+
+    <div id="threejs-container"></div>
+    <canvas id="overlayCanvas"></canvas>
+
+    <div class="content-container">
+        <div id="icon-container">
+            <a href="https://www.linkedin.com/in/harsh-bajwa-37086323b/" target="_blank" rel="noopener noreferrer" class="icon-link" aria-label="LinkedIn Profile"> <i class="fab fa-linkedin"></i> </a>
+            <a href="https://github.com/harshsbajwa" target="_blank" rel="noopener noreferrer" class="icon-link" aria-label="GitHub Profile"> <i class="fab fa-github"></i> </a>
+            <div class="tooltip">
+                 <span class="tooltiptext" id="copyTooltip">Copied!</span>
+                 <button id="emailButton" class="icon-link" aria-label="Copy Email Address"> <i id="emailIcon" class="fas fa-envelope"></i> </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-box"></div>
+
+    <script>
+        if (typeof THREE === 'undefined') {
+            console.error("THREE is not defined.");
+            document.body.innerHTML = '<p style="color: red; text-align: center; margin-top: 50px;">Error: Failed to load Three.js.</p>';
+        } else {
+            const threeContainer = document.getElementById('threejs-container');
+            const overlayCanvas = document.getElementById('overlayCanvas');
+            const overlayCtx = overlayCanvas.getContext('2d');
+            const emailButton = document.getElementById('emailButton');
+            const emailIcon = document.getElementById('emailIcon');
+            const copyTooltip = document.getElementById('copyTooltip').parentElement;
+
+            const EMAIL_ADDRESS = "hsbajwah@gmail.com";
+            const TEXT_TO_DISPLAY = "harsh bajwa";
+            const FONT_JSON_PATH = 'https://raw.githack.com/mrdoob/three.js/r128/examples/fonts/helvetiker_regular.typeface.json';
+            const TEXT_SIZE = 8; // Base size
+            const TEXT_HEIGHT = 1.5;
+            const TEXT_PARTICLE_SIZE = 3.75;
+            const TEXT_PARTICLE_COLOR = 0xaaaaff;
+            const TARGET_TEXT_PARTICLE_COUNT = 6000;
+            const CURVE_SEGMENTS = 5;
+            const STAR_COUNT = 4000;
+            const STAR_SIZE = 0.9;
+            const STAR_SPREAD_RADIUS = 130;
+            const MOUSE_REPULSION_RADIUS = 3;
+            const MOUSE_REPULSION_STRENGTH = 0.09;
+            const TEXT_RESTORING_FORCE = 0.015;
+            const TEXT_DAMPING = 0.90;
+            const PARALLAX_STRENGTH = 0.8;
+            const CURSOR_EFFECT_RADIUS = 25;
+            const RESPONSIVE_TEXT_PADDING = 0.9; // Scale text to 90% of visible width
+
+            let scene, camera, renderer, fontLoader;
+            let textPoints = null;
+            let textMeshWidth = 0; // Store calculated width of the text mesh
+            let starPoints = null;
+            let textParticlesData = [];
+            let animationFrameId = null;
+            let clock = new THREE.Clock();
+
+            const mouse = { x: null, y: null };
+            const normalizedMouse = new THREE.Vector2(0, 0);
+            let worldMouse = new THREE.Vector3();
+
+            const pointVertexShader = `
+                attribute float customSpeedPhase;
+                #ifdef USE_VERTEX_COLOR
+                    attribute vec3 color;
+                #endif
+                uniform float uTime;
+                uniform float uBaseSize;
+                varying float vOpacity;
+                varying vec3 vColor;
+
+                void main() {
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    float speed = 1.0 + mod(customSpeedPhase, 1.0) * 2.0;
+                    float phase = mod(customSpeedPhase * 10.0, 6.28318);
+                    float timeFactor = sin(uTime * speed + phase);
+                    vOpacity = pow(max(0.0, 0.5 + 0.5 * timeFactor), 3.0);
+                    vOpacity = mix(0.1, 1.0, vOpacity);
+                    gl_PointSize = uBaseSize;
+                    gl_PointSize *= (1.0 / -mvPosition.z);
+                    gl_Position = projectionMatrix * mvPosition;
+                    #ifdef USE_VERTEX_COLOR
+                        vColor = color;
+                    #else
+                        vColor = vec3(1.0);
+                    #endif
+                }
+            `;
+            const pointFragmentShader = `
+                uniform vec3 uColor;
+                uniform float uBaseOpacity;
+                varying float vOpacity;
+                varying vec3 vColor;
+
+                void main() {
+                    float dist = distance(gl_PointCoord, vec2(0.5));
+                    float proceduralAlpha = 1.0 - smoothstep(0.4, 0.5, dist);
+                    #ifdef USE_VERTEX_COLOR
+                        vec3 finalColor = vColor;
+                    #else
+                        vec3 finalColor = uColor;
+                    #endif
+                    float finalAlpha = uBaseOpacity * vOpacity * proceduralAlpha;
+                    if (finalAlpha < 0.01) discard;
+                    gl_FragColor = vec4(finalColor, finalAlpha);
+                }
+            `;
+
+            function init() {
+                if (typeof THREE.FontLoader === 'undefined' || typeof THREE.TextGeometry === 'undefined') {
+                     console.error("FontLoader or TextGeometry script not loaded. Check CDN links.");
+                     document.body.innerHTML = '<p style="color: red; text-align: center; margin-top: 50px;">Error: Failed to load components.</p>';
+                     return;
+                 }
+                scene = new THREE.Scene();
+                scene.fog = new THREE.Fog(0x000000, 60, 180);
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.z = 35;
+
+                try {
+                    renderer = new THREE.WebGLRenderer({ antialias: true });
+                    // Cap pixel ratio to avoid excessive texture sizes on high-res displays
+                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    threeContainer.innerHTML = '';
+                    threeContainer.appendChild(renderer.domElement);
+                } catch (error) { console.error("WebGL Renderer init failed:", error); showMessage("WebGL Error."); setupEventListeners(); return; }
+
+                overlayCanvas.width = window.innerWidth;
+                overlayCanvas.height = window.innerHeight;
+
+                createTextAndStars();
+                setupEventListeners();
+            }
+
+            function createTextAndStars() {
+                 fontLoader = new THREE.FontLoader();
+                 fontLoader.load(
+                     FONT_JSON_PATH,
+                     (font) => { createTextParticles(font); },
+                     (xhr) => {
+                         if (xhr.total > 0) { console.log((xhr.loaded / xhr.total * 100).toFixed(0) + '% font loaded'); }
+                         else { console.log('Font loading progress unavailable.'); }
+                     },
+                     (error) => { console.error('Font loading failed:', error); showMessage('Font Error.'); }
+                 );
+                 createStars();
+                 if (!animationFrameId) animate();
+            }
+
+            function setupEventListeners() {
+                 window.addEventListener('resize', onWindowResize, false);
+                 window.addEventListener('mousemove', onMouseMove, false);
+                 window.addEventListener('mouseout', onMouseOut, false);
+                 if (emailButton) { emailButton.addEventListener('click', () => copyToClipboard(EMAIL_ADDRESS)); }
+                 else { console.error("Email button not found."); }
+            }
+
+            function createTextParticles(font) {
+                 if (!scene) return;
+                 try {
+                    const textGeometry = new THREE.TextGeometry(TEXT_TO_DISPLAY, { font: font, size: TEXT_SIZE, height: TEXT_HEIGHT, curveSegments: CURVE_SEGMENTS, bevelEnabled: false });
+                    textGeometry.computeBoundingBox(); const bb = textGeometry.boundingBox;
+                    textGeometry.translate(-(bb.max.x - bb.min.x) / 2, -(bb.max.y - bb.min.y) / 2, -TEXT_HEIGHT / 2);
+                    // Store the width for responsiveness calculations
+                    textMeshWidth = bb.max.x - bb.min.x;
+
+                    const sampledPositions = samplePointsFromGeometry(textGeometry, TARGET_TEXT_PARTICLE_COUNT); const particleCount = sampledPositions.length / 3; if (particleCount === 0) { console.error("Text sampling gave 0 particles."); return; }
+                    const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute(sampledPositions, 3));
+                    const speedPhase = new Float32Array(particleCount); textParticlesData = [];
+                    for (let i = 0; i < particleCount; i++) {
+                        speedPhase[i] = Math.random(); const x = sampledPositions[i * 3], y = sampledPositions[i * 3 + 1], z = sampledPositions[i * 3 + 2]; textParticlesData.push({ basePosition: new THREE.Vector3(x, y, z), velocity: new THREE.Vector3(0, 0, 0), currentPosition: new THREE.Vector3(x, y, z) });
+                    } geometry.setAttribute('customSpeedPhase', new THREE.BufferAttribute(speedPhase, 1));
+                    const textMaterial = new THREE.ShaderMaterial({
+                        uniforms: { uTime: { value: 0.0 }, uColor: { value: new THREE.Color(TEXT_PARTICLE_COLOR) }, uBaseSize: { value: TEXT_PARTICLE_SIZE * 40.0 }, uBaseOpacity: { value: 0.9 } },
+                        vertexShader: pointVertexShader, fragmentShader: pointFragmentShader, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+                    textPoints = new THREE.Points(geometry, textMaterial); scene.add(textPoints); console.log(`Created ${particleCount} text particles.`);
+
+                    // Apply initial responsive scale after creation
+                    applyResponsiveTextScale();
+
+                } catch (error) { console.error("Error creating text particles:", error); showMessage("Text Particle Error."); textPoints = null; }
+            }
+
+            function createStars() {
+                 if (!scene) return;
+                 try {
+                    const starGeometry = new THREE.BufferGeometry(); const positions = [], colors = [], speedPhase = []; const color = new THREE.Color();
+                    for (let i = 0; i < STAR_COUNT; i++) {
+                        const r = THREE.MathUtils.randFloat(STAR_SPREAD_RADIUS * 0.1, STAR_SPREAD_RADIUS); const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 2 - 1);
+                        positions.push(r * Math.sin(ph) * Math.cos(th), r * Math.cos(ph), r * Math.sin(ph) * Math.sin(th));
+                        color.setHSL(THREE.MathUtils.randFloat(0.55, 0.65), 0.9, THREE.MathUtils.randFloat(0.6, 1.0)); colors.push(color.r, color.g, color.b);
+                        speedPhase.push(Math.random());
+                    } starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); starGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); starGeometry.setAttribute('customSpeedPhase', new THREE.BufferAttribute(new Float32Array(speedPhase), 1));
+                    const starMaterial = new THREE.ShaderMaterial({
+                        uniforms: { uTime: { value: 0.0 }, uBaseSize: { value: STAR_SIZE * 50.0 }, uBaseOpacity: { value: 0.85 } },
+                        vertexShader: pointVertexShader, fragmentShader: pointFragmentShader, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+                        defines: { 'USE_VERTEX_COLOR': '' } });
+                    starPoints = new THREE.Points(starGeometry, starMaterial); scene.add(starPoints); console.log(`Created ${STAR_COUNT} stars.`);
+                } catch (error) { console.error("Error creating stars:", error); showMessage("Star Creation Error."); starPoints = null; }
+            }
+
+            function samplePointsFromGeometry(geometry, targetCount) {
+                const positions = geometry.attributes.position.array; const numVertices = positions.length / 3; if (!numVertices || numVertices % 3 !== 0) return new Float32Array(0);
+                const triangles = []; let totalArea = 0; const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3(); const tempTriangle = new THREE.Triangle();
+                for (let i = 0; i < numVertices; i += 3) { vA.fromArray(positions, i * 3); vB.fromArray(positions, (i + 1) * 3); vC.fromArray(positions, (i + 2) * 3); tempTriangle.set(vA, vB, vC); const area = tempTriangle.getArea(); if (area > 1e-6) { triangles.push({ a: vA.clone(), b: vB.clone(), c: vC.clone(), area: area }); totalArea += area; } }
+                if (totalArea === 0) return new Float32Array(0); const sampledPositions = []; const cumulativeAreas = []; let cumulativeArea = 0;
+                for (let i = 0; i < triangles.length; i++) { cumulativeArea += triangles[i].area / totalArea; cumulativeAreas.push(cumulativeArea); } const randomPoint = new THREE.Vector3();
+                for (let i = 0; i < targetCount; i++) { const randomVal = Math.random(); let selectedTriangleIndex = 0; for (let j = 0; j < cumulativeAreas.length; j++) { if (randomVal <= cumulativeAreas[j]) { selectedTriangleIndex = j; break; } } const t = triangles[selectedTriangleIndex]; let r1 = Math.random(), r2 = Math.random(); if (r1 + r2 > 1) { r1 = 1.0 - r1; r2 = 1.0 - r2; } const r3 = 1.0 - r1 - r2; randomPoint.copy(t.a).multiplyScalar(r3).addScaledVector(t.b, r1).addScaledVector(t.c, r2); sampledPositions.push(randomPoint.x, randomPoint.y, randomPoint.z); }
+                return new Float32Array(sampledPositions);
+            }
+
+             // --- Apply Text Scaling based on Viewport ---
+            function applyResponsiveTextScale() {
+                 if (!camera || !textPoints || textMeshWidth <= 0) return;
+
+                 // Calculate the visible width at z=0 (where the text is centered)
+                 const vFOV = camera.fov * Math.PI / 180; // Vertical FOV in radians
+                 const height = 2 * Math.tan(vFOV / 2) * camera.position.z; // Visible height at z=0
+                 const width = height * camera.aspect; // Visible width at z=0
+
+                 // Calculate scale needed to fit text within padding % of visible width
+                 const desiredScale = Math.min(1.0, (width / textMeshWidth) * RESPONSIVE_TEXT_PADDING);
+
+                 textPoints.scale.set(desiredScale, desiredScale, desiredScale);
+            }
+
+
+            function updateTextParticles() {
+                if (!textPoints || !textPoints.geometry || textParticlesData.length === 0 || !camera) return;
+                try {
+                    const positions = textPoints.geometry.attributes.position.array; let mouseDetected = mouse.x !== null && mouse.y !== null;
+                    if (mouseDetected) { const vec = new THREE.Vector3(normalizedMouse.x, normalizedMouse.y, 0.5); vec.unproject(camera); const dir = vec.sub(camera.position).normalize(); const distance = -camera.position.z / dir.z; worldMouse.copy(camera.position).add(dir.multiplyScalar(distance)); }
+                    const radiusSq = MOUSE_REPULSION_RADIUS * MOUSE_REPULSION_RADIUS;
+                    for (let i = 0; i < textParticlesData.length; i++) {
+                        const p = textParticlesData[i], cur = p.currentPosition, base = p.basePosition, vel = p.velocity;
+                        if (mouseDetected) { const dx = cur.x - worldMouse.x, dy = cur.y - worldMouse.y, dz = cur.z - worldMouse.z; const distSq = dx * dx + dy * dy + dz * dz; if (distSq < radiusSq && distSq > 1e-6) { const dist = Math.sqrt(distSq); const force = (MOUSE_REPULSION_RADIUS - dist) / MOUSE_REPULSION_RADIUS; const str = force * MOUSE_REPULSION_STRENGTH; vel.addScaledVector(new THREE.Vector3(dx, dy, dz).normalize(), str); } }
+                        vel.addScaledVector(new THREE.Vector3().subVectors(base, cur), TEXT_RESTORING_FORCE); vel.multiplyScalar(TEXT_DAMPING); cur.add(vel);
+                        // Apply position update relative to the scaled object
+                        positions[i * 3] = cur.x; positions[i * 3 + 1] = cur.y; positions[i * 3 + 2] = cur.z;
+                    } textPoints.geometry.attributes.position.needsUpdate = true;
+                } catch (error) { console.error("Particle physics error:", error); }
+            }
+
+            function updateOverlay() {
+                try {
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height); if (mouse.x !== null && mouse.y !== null) { const grad = overlayCtx.createRadialGradient(mouse.x, mouse.y, 2, mouse.x, mouse.y, CURSOR_EFFECT_RADIUS); grad.addColorStop(0, 'rgba(255, 255, 255, 0.07)'); grad.addColorStop(0.5, 'rgba(200, 200, 255, 0.03)'); grad.addColorStop(1, 'rgba(0, 0, 0, 0)'); overlayCtx.fillStyle = grad; overlayCtx.beginPath(); overlayCtx.arc(mouse.x, mouse.y, CURSOR_EFFECT_RADIUS, 0, Math.PI * 2); overlayCtx.fill(); }
+                } catch (error) { /* ignore overlay errors */ }
+            }
+
+            function animate() {
+                animationFrameId = requestAnimationFrame(animate); const elapsedTime = clock.getElapsedTime();
+                try {
+                    updateTextParticles();
+                    if (textPoints && textPoints.material.uniforms.uTime) textPoints.material.uniforms.uTime.value = elapsedTime;
+                    if (starPoints && starPoints.material.uniforms.uTime) starPoints.material.uniforms.uTime.value = elapsedTime;
+                    if (camera && scene) { let targetX = normalizedMouse.x * PARALLAX_STRENGTH, targetY = -normalizedMouse.y * PARALLAX_STRENGTH; camera.position.x += (targetX - camera.position.x) * 0.03; camera.position.y += (targetY - camera.position.y) * 0.03; camera.lookAt(scene.position); }
+                    if (renderer && scene && camera) renderer.render(scene, camera);
+                    updateOverlay();
+                } catch (error) { console.error("Animation loop error:", error); showMessage("Animation Error."); cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+            }
+
+            function onWindowResize() {
+                if (camera && renderer && overlayCanvas) {
+                    camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    overlayCanvas.width = window.innerWidth; overlayCanvas.height = window.innerHeight;
+                    // Re-apply responsive scaling on resize
+                    applyResponsiveTextScale();
+                }
+             }
+            function onMouseMove(event) { mouse.x = event.clientX; mouse.y = event.clientY; normalizedMouse.x = (event.clientX / window.innerWidth) * 2 - 1; normalizedMouse.y = -(event.clientY / window.innerHeight) * 2 + 1; }
+            function onMouseOut(event) { mouse.x = null; mouse.y = null; normalizedMouse.x = 0; normalizedMouse.y = 0; }
+
+            function copyToClipboard(text) { if (!navigator.clipboard) { showMessage("Clipboard API unavailable."); return; } navigator.clipboard.writeText(text).then(() => { if(emailIcon && copyTooltip) { emailIcon.classList.remove('fa-envelope'); emailIcon.classList.add('fa-check'); copyTooltip.classList.add('active'); setTimeout(() => { emailIcon.classList.remove('fa-check'); emailIcon.classList.add('fa-envelope'); copyTooltip.classList.remove('active'); }, 2000); } }).catch(err => { console.error('Copy failed: ', err); showMessage('Copy Failed.'); }); }
+            function showMessage(msg) { const box = document.getElementById('message-box'); if (box) { box.textContent = msg; box.style.display = 'block'; setTimeout(() => { if (box.textContent === msg) box.style.display = 'none'; }, 5000); } else { console.warn("Message box not found:", msg); } }
+
+            window.onload = () => {
+                 if (typeof THREE !== 'undefined') { init(); }
+                 else { console.error("THREE core is not defined even after window.onload."); document.body.innerHTML = '<p style="color: red; text-align: center; margin-top: 50px;">Error: Failed to load Three.js library.</p>'; }
+            };
+        }
+    </script>
+</body>
+</html>
