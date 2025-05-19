@@ -45,12 +45,14 @@
             display: flex;
             gap: 1.8rem;
             z-index: 2;
-            /* Fallback for browsers that don't support env() or calc() with env() */
             bottom: 4rem;
-            /* Adjust bottom position using safe-area-inset-bottom.
-               The '0px' is a fallback for env() if the variable isn't set by the UA,
-               ensuring calc() still works. */
             bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+        }
+        @media (max-width: 767px) {
+            #icon-container {
+                bottom: 8rem; 
+                bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
+            }
         }
         .icon-link { color: #ccc; font-size: 1.8rem; transition: color 0.3s ease, transform 0.3s ease; text-decoration: none; }
         .icon-link:hover { color: #fff; transform: scale(1.1); }
